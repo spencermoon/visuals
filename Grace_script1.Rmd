@@ -1,0 +1,126 @@
+---
+title: "script1"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+##Read data
+```{r}
+library(dplyr)
+yr2015<-read.csv("2015_world_happiness.csv")
+yr2016<-read.csv("2016_world_happiness.csv")
+yr2017<-read.csv("2017_world_happiness.csv")
+
+yr2015<-yr2015[,c(1:4,6:12)]
+yr2016<-yr2016[,c(1:4,7:13)]
+yr2017<-yr2017[,c(1:3,6:12)]
+
+regiondata<-yr2016[,c(1,2)]
+yr2017<-left_join(yr2017,regiondata,by = "Country")
+yr2017<-yr2017[,c(1,11,2:10)]
+
+yr2015$rank<-1:nrow(yr2015)
+yr2016$rank<-1:nrow(yr2016)
+yr2017$rank<-1:nrow(yr2017)
+```
+
+##Merge and caculate the difference in rankings between 2017 and 2015
+```{r}
+countries<-left_join(yr2015[,c(1,12)],yr2016[,c(1,12)],by="Country")
+countries<-left_join(countries,yr2017[,c(1,12)],by="Country")
+colnames(countries)[c(2,3,4)]<-c("rank2015","rank2016","rank2017")
+
+countries$delta<-countries$rank2017-countries$rank2015
+countries<-countries[complete.cases(countries),]
+summary(countries$delta)
+
+```
+
+**1st Quantiles is -10. 3rd Quantile is 5.**
+
+##For all countries that have moved up more than 10 places in their rankings from 2015 to 2017
+```{r}
+improve<-countries %>% filter(delta < -10)
+
+getcountry <- function(country){
+  df<-yr2015 %>% filter(Country == country) %>% cbind(yr2017 %>% filter(Country == country))
+  return(df)
+}
+countryimprove<-improve$Country
+improved_set<-getcountry(countryimprove[1])
+for (i in 1:length(countryimprove)){
+  improved_set<-rbind(improved_set,getcountry(countryimprove[i+1]))
+  
+}
+improved_set$gdpdiff <- improved_set[,17]-improved_set[,5]
+improved_set$familydiff<-improved_set[,18]-improved_set[,6]
+improved_set$healthdiff<-improved_set[,19]-improved_set[,7]
+improved_set$freedomdiff<-improved_set[,20]-improved_set[,8]
+improved_set$trustdiff<-improved_set[,22]-improved_set[,9]
+improved_set$gendiff<-improved_set[,21]-improved_set[,10]
+improved_set$dysdiff<-improved_set[,23]-improved_set[,11]
+
+summary(improved_set[,c(25:31)])
+```
+
+**If only look at the mean, some indicators are still negative. Seems like the most influential factors are family, gdp and dystopia residual.**
+
+## 5 Countries improved the most
+```{r}
+Latvia<-improved_set[improved_set$Country == "Latvia",c(25:31)]
+Egypt<-improved_set[improved_set$Country == "Egypt",c(25:31)]
+Romania<-improved_set[improved_set$Country == "Romania",c(25:31)]
+Hungary<-improved_set[improved_set$Country == "Hungary",c(25:31)]
+Bulgaria<-improved_set[improved_set$Country == "Bulgaria",c(25:31)]
+
+fiveimprovecountry<-c("Latvia","Egypt","Romania","Hungary","Bulgaria")
+fiveimprove<-rbind(Latvia, Egypt, Romania,Hungary, Bulgaria)
+fiveimprove$country<-fiveimprovecountry
+fiveimprove<-fiveimprove[,c(8,1:7)]
+fiveimprove
+```
+
+
+
+##For all countries that have dropped more than 5 places in their rankings from 2015 to 2017
+
+```{r}
+drop<-countries %>% filter(delta >5)
+countrydrop<-drop$Country
+drop_set<-getcountry(countrydrop[1])
+for (i in 1:length(countrydrop)){
+  drop_set<-rbind(drop_set,getcountry(countrydrop[i+1]))
+  
+}
+
+drop_set$gdpdiff<-drop_set[,17]-drop_set[,5]
+drop_set$familydiff<-drop_set[,18]-drop_set[,6]
+drop_set$healthdiff<-drop_set[,19]-drop_set[,7]
+drop_set$freedomdiff<-drop_set[,20]-drop_set[,8]
+drop_set$trustdiff<-drop_set[,22]-drop_set[,9]
+drop_set$gendiff<-drop_set[,21]-drop_set[,10]
+drop_set$dysdiff<-drop_set[,23]-drop_set[,11]
+summary(drop_set[,c(25:31)])
+
+
+```
+
+
+##Country dropped ranking the most
+```{r}
+Venezuela<-drop_set[drop_set$Country == "Venezuela",c(25:31)]
+Liberia<-drop_set[drop_set$Country == "Liberia",c(25:31)]
+Zambia<-drop_set[drop_set$Country == "Zambia",c(25:31)]
+Haiti<-drop_set[drop_set$Country == "Haiti",c(25:31)]
+Zimbabwe<-drop_set[drop_set$Country == "Zimbabwe",c(25:31)]
+
+
+fivedropcountry<-c("Venezuela","Liberia","Zambia","Haiti","Zimbabwe")
+fivedrop<-rbind(Venezuela, Liberia, Zambia,Haiti, Zimbabwe)
+fivedrop$country<-fivedropcountry
+fivedrop<-fivedrop[,c(8,1:7)]
+fivedrop
+```
+
+
